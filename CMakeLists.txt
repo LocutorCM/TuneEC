@@ -4,6 +4,7 @@ project(TunEC VERSION 1.0.0 LANGUAGES C CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
+
 # macOS only. 10.13 is the oldest target JUCE 8 supports; binaries are universal
 # (Intel x86_64 + Apple Silicon arm64).
 if(NOT APPLE)
@@ -19,7 +20,7 @@ option(TUNEC_BUILD_TESTS  "Build the stand-alone DSP tests" ON)
 add_library(tunec_dsp STATIC Source/DSP/PitchEngine.cpp)
 target_include_directories(tunec_dsp PUBLIC Source)
 
-if(TUNEC_BUILD_TESTS)
+if(TUNEC_BUILD_TESTS AND EXISTS "${CMAKE_CURRENT_SOURCE_DIR}/Tests/EngineTest.cpp")
   enable_testing()
   add_executable(tunec_engine_test Tests/EngineTest.cpp)
   target_link_libraries(tunec_engine_test PRIVATE tunec_dsp)
