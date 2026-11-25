@@ -1,0 +1,50 @@
+name: Build TunEC (macOS)
+
+on:
+  push:
+    branches: [ main, master ]
+    tags: [ 'v*' ]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Configure (universal, macOS 10.13+)
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=Release \
+            -DCMAKE_OSX_DEPLOYMENT_TARGET=10.13 \
+            -DCMAKE_OSX_ARCHITECTURES="arm64;x86_64"
+
+      - name: Build
+        run: cmake --build build --config Release --parallel
+
+      - name: DSP tests
+        run: ctest --test-dir build -C Release --output-on-failure
+
+      - name: Ad-hoc sign and package
+        run: |
+          mkdir -p dist
+          cp -R build/TunEC_artefacts/Release/AU dist/
+          cp -R build/TunEC_artefacts/Release/VST3 dist/
+          cp -R build/TunEC_artefacts/Release/Standalone dist/
+          find dist -maxdepth 2 \( -name "*.component" -o -name "*.vst3" -o -name "*.app" \) \
+            -exec codesign --force --deep -s - {} \;
+          lipo -archs "dist/VST3/TunEC.vst3/Contents/MacOS/TunEC"
+          cd dist && zip -qry ../TunEC-macOS.zip .
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: TunEC-macOS
+          path: TunEC-macOS.zip
+
+      - name: Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: TunEC-macOS.zip
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
